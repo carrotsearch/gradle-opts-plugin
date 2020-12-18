@@ -2,6 +2,7 @@ plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
     id 'groovy'
+    id 'signing'
     id 'com.gradle.plugin-publish' version '0.12.0'
 }
 
@@ -50,12 +51,51 @@ pluginBundle {
     tags = ['properties', 'utility']
 }
 
+task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
 publishing {
     repositories {
         maven {
             name = 'staging'
             url = "${buildDir}/m2-local"
         }
+
+        maven {
+            name = 'sonatype'
+            url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+
+            credentials {
+                if (project.hasProperty('nexusUsername')) {
+                    username project.nexusUsername
+                }
+                if (project.hasProperty('nexusPassword')) {
+                    password project.nexusPassword
+                }
+            }
+        }
+    }
+
+    publications {
+        signed(MavenPublication) {
+            from components.java
+            groupId = project.group
+            artifactId = project.archivesBaseName
+
+            artifact sourcesJar
+            artifact javadocJar
+        }
+    }
+
+    signing {
+        sign publishing.publications.signed
     }
 
     afterEvaluate {
