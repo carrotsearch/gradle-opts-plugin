@@ -141,3 +141,6 @@ publishing {
     }
 }
 
+task deploy {
+    dependsOn "publishSignedPublicationToSonatypeRepository", publishPlugins
+}
