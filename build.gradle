@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.carrotsearch.gradle.opts'
-version = '0.0.3'
+version = '0.0.4-SNAPSHOT'
 def humanName = 'Gradle Opts Plugin'
 description = 'Utility plugin for managing configurable project options'
 
