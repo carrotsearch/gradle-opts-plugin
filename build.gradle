@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.carrotsearch.gradle.opts'
-version = '0.0.3-SNAPSHOT'
+version = '0.0.3'
 def humanName = 'Gradle Opts Plugin'
 description = 'Utility plugin for managing configurable project options'
 
@@ -85,23 +85,18 @@ publishing {
         }
     }
 
-    publications {
-        signed(MavenPublication) {
-            from components.java
-            groupId = project.group
-            artifactId = project.archivesBaseName
-
-            artifact sourcesJar
-            artifact javadocJar
-        }
-    }
-
-    signing {
-        sign publishing.publications.signed
-    }
-
     afterEvaluate {
+        signing {
+            sign publishing.publications.optsPluginMarkerMaven
+            sign publishing.publications.pluginMaven
+        }
+
         publications {
+            pluginMaven {
+              artifact sourcesJar
+              artifact javadocJar
+            }
+
             withType(MavenPublication) {
                 pom {
                     inceptionYear = "2020"
@@ -142,5 +137,7 @@ publishing {
 }
 
 task deploy {
-    dependsOn "publishSignedPublicationToSonatypeRepository", publishPlugins
+    dependsOn "publishOptsPluginMarkerMavenPublicationToStagingRepository", 
+              "publishPluginMavenPublicationToStagingRepository",
+              publishPlugins
 }
