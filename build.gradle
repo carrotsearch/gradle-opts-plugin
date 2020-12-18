@@ -8,6 +8,8 @@ plugins {
 
 group = 'com.carrotsearch.gradle.opts'
 version = '0.0.2'
+def humanName = 'Gradle Opts Plugin'
+description = 'Utility plugin for managing configurable project options'
 
 repositories {
     mavenCentral()
@@ -22,8 +24,8 @@ gradlePlugin {
         opts {
             id = 'com.carrotsearch.gradle.opts'
             implementationClass = 'com.carrotsearch.gradle.opts.OptsPlugin'
-            displayName = 'Opts Plugin'
-            description = 'Utility plugin for managing configurable project options'
+            displayName = humanName
+            description = project.description
         }
     }
 }
@@ -103,6 +105,9 @@ publishing {
             withType(MavenPublication) {
                 pom {
                     inceptionYear = "2020"
+
+                    name = humanName
+                    description = project.description
 
                     licenses {
                         license {
