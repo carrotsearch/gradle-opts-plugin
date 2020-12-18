@@ -1,0 +1,96 @@
+plugins {
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+    id 'com.gradle.plugin-publish' version '0.12.0'
+}
+
+group = 'com.carrotsearch.gradle.opts'
+version = '0.0.1'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13'
+}
+
+gradlePlugin {
+    plugins {
+        opts {
+            id = 'com.carrotsearch.gradle.opts'
+            implementationClass = 'com.carrotsearch.gradle.opts.OptsPlugin'
+            displayName = 'Opts Plugin'
+            description = 'Utility plugin for managing configurable project options'
+        }
+    }
+}
+
+sourceSets {
+    functionalTest {
+    }
+}
+
+gradlePlugin.testSourceSets(sourceSets.functionalTest)
+configurations.functionalTestImplementation.extendsFrom(configurations.testImplementation)
+
+tasks.register('functionalTest', Test) {
+    testClassesDirs = sourceSets.functionalTest.output.classesDirs
+    classpath = sourceSets.functionalTest.runtimeClasspath
+}
+
+check {
+    dependsOn(tasks.functionalTest)
+}
+
+pluginBundle {
+    website = 'https://github.com/dweiss/gradle-opts-plugin'
+    vcsUrl = 'https://github.com/dweiss/gradle-opts-plugin.git'
+    tags = ['properties', 'utility']
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'staging'
+            url = "${buildDir}/m2-local"
+        }
+    }
+
+    afterEvaluate {
+        publications {
+            withType(MavenPublication) {
+                pom {
+                    inceptionYear = "2020"
+
+                    licenses {
+                        license {
+                            name = 'Apache 2'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+
+                    organization {
+                        name = "Carrot Search s.c."
+                        url = "https://www.carrotsearch.com"
+                    }
+
+                    developers {
+                        developer {
+                            id = 'dawid.weiss'
+                            name = 'Dawid Weiss'
+                            email = 'dawid.weiss@carrotsearch.com'
+                        }
+                    }
+
+                    scm {
+                        connection = 'scm:git:git@github.com:carrotsearch/hppc.git'
+                        developerConnection = pluginBundle.vcsUrl
+                        url = pluginBundle.website
+                    }
+                }
+            }
+        }
+    }
+}
+
