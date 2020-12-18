@@ -5,19 +5,23 @@ package com.carrotsearch.gradle.opts;
 
 import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
+import org.junit.Assert;
 import org.junit.Test;
-
-import static org.junit.Assert.assertNotNull;
 
 /** A simple unit test. */
 public class OptsPluginTest {
   @Test
-  public void pluginRegistersATask() {
-    // Create a test project and apply the plugin
+  public void registersUtilityMethods() {
     Project project = ProjectBuilder.builder().build();
     project.getPlugins().apply("com.carrotsearch.gradle.opts");
 
     // Verify the result
-    assertNotNull(project.getTasks().findByName("greeting"));
+    OptsPluginExtension opts = (OptsPluginExtension) project.getExtensions().findByName("opts");
+    Assert.assertNotNull(opts);
+
+    Object defValue = "default-value";
+    Assert.assertEquals(defValue, opts.optOrDefault("non-existent", defValue));
+    Assert.assertEquals(defValue, opts.envOrDefault("non-existent", defValue));
+    Assert.assertEquals(defValue, opts.optOrEnvOrDefault("non-existent", "non-existent", defValue));
   }
 }
