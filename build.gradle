@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.carrotsearch.gradle.opts'
-version = '0.0.4-SNAPSHOT'
+version = '0.0.4'
 def humanName = 'Gradle Opts Plugin'
 description = 'Utility plugin for managing configurable project options'
 
@@ -46,6 +46,14 @@ tasks.register('functionalTest', Test) {
 check {
     dependsOn(tasks.functionalTest)
 }
+
+sourceCompatibility = 8
+targetCompatibility = 8 
+
+tasks.withType(JavaCompile) {
+  options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+  options.encoding = "UTF-8"
+} 
 
 pluginBundle {
     website = 'https://github.com/dweiss/gradle-opts-plugin'
@@ -140,4 +148,9 @@ task deploy {
     dependsOn "publishOptsPluginMarkerMavenPublicationToSonatypeRepository", 
               "publishPluginMavenPublicationToSonatypeRepository",
               publishPlugins
+}
+
+task deployStaging {
+    dependsOn "publishOptsPluginMarkerMavenPublicationToStagingRepository", 
+              "publishPluginMavenPublicationToStagingRepository"
 }
