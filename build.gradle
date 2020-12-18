@@ -108,6 +108,7 @@ publishing {
 
                     name = humanName
                     description = project.description
+                    url = pluginBundle.website
 
                     licenses {
                         license {
