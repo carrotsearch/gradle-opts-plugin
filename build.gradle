@@ -134,7 +134,7 @@ publishing {
                     }
 
                     scm {
-                        connection = 'scm:git:git@github.com:carrotsearch/hppc.git'
+                        connection = 'scm:git:git@github.com:dweiss/gradle-opts-plugin.git'
                         developerConnection = pluginBundle.vcsUrl
                         url = pluginBundle.website
                     }
