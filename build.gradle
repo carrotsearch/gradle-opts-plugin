@@ -7,9 +7,9 @@ plugins {
 }
 
 group = 'com.carrotsearch.gradle.opts'
-version = '0.0.4'
+version = '0.0.5'
 def humanName = 'Gradle Opts Plugin'
-description = 'Utility plugin for managing configurable project options'
+description = 'Configurable project options management'
 
 repositories {
     mavenCentral()

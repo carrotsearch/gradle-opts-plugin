@@ -1,52 +1,45 @@
 package com.carrotsearch.gradle.opts
 
 import groovy.transform.CompileStatic
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 
 /**
  * Extension methods.
  */
 @CompileStatic
-class OptsPluginExtension {
-  private final Project project
+class OptsPluginExtension implements Iterable<Option> {
+  final Project project
+  private final TreeMap<String, Option> options = new TreeMap<>()
 
   OptsPluginExtension(Project project) {
     this.project = project
   }
 
-  // Project property, system property or default value (result of a closure call, if it's a closure).
-  Object optOrDefault(String propName, Object defValue) {
-    def result
-    if (project.hasProperty(propName)) {
-      result = project.property(propName)
-    } else if (System.properties.containsKey(propName)) {
-      result = System.properties.get(propName)
-    } else {
-      result = closureOrValue(defValue)
+  Option option(Map opts) {
+    opts = ["project": project, *:opts]
+    return option(opts as Option)
+  }
+
+  Option option(Option opt) {
+    if (options.containsKey(opt.name)) {
+      throw new GradleException("Option already exists on project '${project.path}': ${opt.name}")
     }
-    return result
+
+    options.put(opt.name, opt)
+    return opt
   }
 
-  // Either a project, system property, environment variable or default value.
-  Object optOrEnvOrDefault(String propName, String envName, Object defValue) {
-    return optOrDefault(propName, envOrDefault(envName, defValue));
+  @Override
+  Iterator<Option> iterator() {
+    return options.values().iterator()
   }
 
-  // System environment variable or default.
-  Object envOrDefault(String envName, Object defValue) {
-    def result = System.getenv(envName)
-    if (result != null) {
-      return result
+  def propertyMissing(String name) {
+    if (options.containsKey(name)) {
+      return options[name]
     } else {
-      return closureOrValue(defValue)
-    }
-  }
-
-  static Object closureOrValue(Object value) {
-    if (value instanceof Closure) {
-      return value.call()
-    } else {
-      return value
+      throw new GradleException("No option named: ${name}")
     }
   }
 }

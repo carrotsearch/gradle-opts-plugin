@@ -6,17 +6,20 @@ import org.gradle.api.Project
 import org.gradle.util.GradleVersion
 
 /**
- * Plugin entry.
+ * Configurable options plugin.
  */
 @CompileStatic
 class OptsPlugin implements Plugin<Project> {
+  static String OPTIONS_EXTENSION_NAME = "opts"
+
   @Override
   void apply(Project project) {
     if (GradleVersion.current() < GradleVersion.version("6.2")) {
-      project.logger.error(
-          "Requires Gradle >= 6.2")
+      project.logger.error("Requires Gradle >= 6.2")
     }
 
-    project.extensions.add("opts", new OptsPluginExtension(project))
+    project.extensions.add(OPTIONS_EXTENSION_NAME, new OptsPluginExtension(project))
+
+    project.tasks.register(ShowOptionsTask.NAME, ShowOptionsTask.class)
   }
 }
