@@ -56,8 +56,8 @@ tasks.withType(JavaCompile) {
 } 
 
 pluginBundle {
-    website = 'https://github.com/dweiss/gradle-opts-plugin'
-    vcsUrl = 'https://github.com/dweiss/gradle-opts-plugin.git'
+    website = 'https://github.com/carrotsearch/gradle-opts-plugin'
+    vcsUrl = 'https://github.com/carrotsearch/gradle-opts-plugin.git'
     tags = ['properties', 'utility']
 }
 
