@@ -1,156 +1,141 @@
 plugins {
-    id 'java-gradle-plugin'
-    id 'maven-publish'
-    id 'groovy'
+    id "java-gradle-plugin"
+    id "groovy"
     id 'signing'
-    id 'com.gradle.plugin-publish' version '0.12.0'
+    id 'maven-publish'
+    alias(libs.plugins.pluginpublish)
 }
 
-group = 'com.carrotsearch.gradle.opts'
-version = '0.0.7-SNAPSHOT'
-def humanName = 'Gradle Opts Plugin'
-description = 'Configurable project options management'
+project.group = 'com.carrotsearch.gradle.opts'
+project.version = libs.versions.projectVersion.get()
+project.description = 'Overrideable build options for gradle'
+
+project.ext.websiteAddress = "https://github.com/carrotsearch/gradle-opts-plugin"
+project.ext.vcsAddress = "git@github.com:carrotsearch/gradle-opts-plugin.git"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    testImplementation 'junit:junit:4.13'
+    testImplementation libs.junit.jupiter
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    testImplementation libs.assertj
+
+    testImplementation platform(libs.spockframework.get())
+    testImplementation "org.spockframework:spock-core"
 }
 
 gradlePlugin {
     plugins {
         opts {
             id = 'com.carrotsearch.gradle.opts'
-            implementationClass = 'com.carrotsearch.gradle.opts.OptsPlugin'
-            displayName = humanName
+            implementationClass = 'com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin'
+            displayName = project.description
             description = project.description
+            tags.set([
+                    'convention',
+                    'build-utility',
+                    'testing',
+                    'options'
+            ])
         }
     }
 }
 
-sourceSets {
-    functionalTest {
+tasks.withType(Javadoc).configureEach {
+    it.options.addBooleanOption("Xdoclint:none", true)
+}
+
+tasks.register("sourcesJar", Jar, {
+    dependsOn classes
+    archiveClassifier = 'sources'
+    from sourceSets.main.allJava
+})
+
+tasks.register("javadocJar", Jar, {
+    dependsOn javadoc
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+})
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    systemProperty("tests.gradle.version", gradle.gradleVersion)
+}
+
+tasks.matching { it.name == "publishAllPublicationsToSonatypeRepository" }.configureEach {
+    doFirst {
+        if (gradle.startParameter.maxWorkerCount != 1) {
+            throw new GradleException("Use '--max-workers 1' to prevent multiple uploads.")
+        }
     }
 }
 
-gradlePlugin.testSourceSets(sourceSets.functionalTest)
-configurations.functionalTestImplementation.extendsFrom(configurations.testImplementation)
-
-tasks.register('functionalTest', Test) {
-    testClassesDirs = sourceSets.functionalTest.output.classesDirs
-    classpath = sourceSets.functionalTest.runtimeClasspath
-}
-
-check {
-    dependsOn(tasks.functionalTest)
-}
-
-sourceCompatibility = 8
-targetCompatibility = 8 
-
-tasks.withType(JavaCompile) {
-  options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
-  options.encoding = "UTF-8"
-} 
-
-pluginBundle {
-    website = 'https://github.com/carrotsearch/gradle-opts-plugin'
-    vcsUrl = 'https://github.com/carrotsearch/gradle-opts-plugin.git'
-    tags = ['properties', 'utility']
-}
-
-task sourcesJar(type: Jar, dependsOn: classes) {
-    archiveClassifier = 'sources'
-    from sourceSets.main.allJava
-}
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    archiveClassifier = 'javadoc'
-    from javadoc.destinationDir
-}
+tasks.register("publishToSonatype", {
+    description = "Publish plugin to Sonatype"
+    group = "Publishing"
+    dependsOn "publishAllPublicationsToSonatypeRepository"
+})
 
 publishing {
     repositories {
         maven {
-            name = 'staging'
-            url = "${buildDir}/m2-local"
+            name = 'build'
+            url = project.layout.buildDirectory.dir("maven").get().asFile
         }
 
         maven {
             name = 'sonatype'
-            url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+            url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
 
             credentials {
                 if (project.hasProperty('nexusUsername')) {
-                    username project.nexusUsername
+                    username = project.nexusUsername
                 }
                 if (project.hasProperty('nexusPassword')) {
-                    password project.nexusPassword
+                    password = project.nexusPassword
                 }
             }
         }
     }
 
-    afterEvaluate {
-        signing {
-            sign publishing.publications.optsPluginMarkerMaven
-            sign publishing.publications.pluginMaven
-        }
+    publications {
+        withType(MavenPublication) {
+            pom {
+                inceptionYear = "2025"
 
-        publications {
-            pluginMaven {
-              artifact sourcesJar
-              artifact javadocJar
-            }
+                name = project.name
+                description = project.description
+                url = websiteAddress
 
-            withType(MavenPublication) {
-                pom {
-                    inceptionYear = "2020"
-
-                    name = humanName
-                    description = project.description
-                    url = pluginBundle.website
-
-                    licenses {
-                        license {
-                            name = 'Apache 2'
-                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                        }
+                licenses {
+                    license {
+                        name = 'Apache 2'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
                     }
+                }
 
-                    organization {
-                        name = "Carrot Search s.c."
-                        url = "https://www.carrotsearch.com"
-                    }
+                organization {
+                    name = "Carrot Search s.c."
+                    url = "https://www.carrotsearch.com"
+                }
 
-                    developers {
-                        developer {
-                            id = 'dawid.weiss'
-                            name = 'Dawid Weiss'
-                            email = 'dawid.weiss@carrotsearch.com'
-                        }
+                developers {
+                    developer {
+                        id = 'dawid.weiss'
+                        name = 'Dawid Weiss'
+                        email = 'dawid.weiss@carrotsearch.com'
                     }
+                }
 
-                    scm {
-                        connection = 'scm:git:git@github.com:dweiss/gradle-opts-plugin.git'
-                        developerConnection = pluginBundle.vcsUrl
-                        url = pluginBundle.website
-                    }
+                scm {
+                    connection = 'scm:git:' + project.ext.vcsAddress
+                    developerConnection = project.ext.vcsAddress
+                    url = websiteAddress
                 }
             }
         }
     }
-}
-
-task deploy {
-    dependsOn "publishOptsPluginMarkerMavenPublicationToSonatypeRepository", 
-              "publishPluginMavenPublicationToSonatypeRepository",
-              publishPlugins
-}
-
-task deployStaging {
-    dependsOn "publishOptsPluginMarkerMavenPublicationToStagingRepository", 
-              "publishPluginMavenPublicationToStagingRepository"
 }

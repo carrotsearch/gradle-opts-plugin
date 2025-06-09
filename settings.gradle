@@ -1,1 +1,13 @@
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    versionCatalogs {
+    }
+}
+
 rootProject.name = 'gradle-opts-plugin'
