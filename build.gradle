@@ -28,6 +28,9 @@ dependencies {
 }
 
 gradlePlugin {
+    website = project.ext.websiteAddress
+    vcsUrl = project.ext.websiteAddress + ".git"
+
     plugins {
         opts {
             id = 'com.carrotsearch.gradle.opts'
