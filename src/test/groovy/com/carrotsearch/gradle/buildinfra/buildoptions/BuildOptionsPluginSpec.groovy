@@ -82,21 +82,23 @@ class BuildOptionsPluginSpec extends AbstractIntegTest {
 
         then:
         containsLines(result.output, """
+        Configurable build options in : (the root project)
+         
         a01 = default-value-a01 # a01 description
         a02 = [empty]  # a02 description
-        a03 = default-value-a03 # (source: computed value) a03 description
-        a04 = true # a04 description (type: boolean)
+        a03 = default-value-a03 # a03 description (source: computed value)
+        a04 = true     # a04 description (type: boolean)
         a05 = [empty]  # a05 description (type: boolean)
-        a06 = false # (source: computed value) a06 description (type: boolean)
-        a07 = 13 # a07 description (type: integer)
+        a06 = false    # a06 description (type: boolean, source: computed value)
+        a07 = 13       # a07 description (type: integer)
         a08 = [empty]  # a08 description (type: integer)
-        a09 = 14 # (source: computed value) a09 description (type: integer)
-        a10 = [empty] # a10 description (type: directory)
+        a09 = 14       # a09 description (type: integer, source: computed value)
+        a10 = [empty]  # a10 description (type: directory)
         a11 = build/a11 # a11 description (type: directory)
-        a12 = build/a12 # (source: computed value) a12 description (type: directory)
-        a13 = [empty] # a13 description (type: file)
+        a12 = build/a12 # a12 description (type: directory, source: computed value)
+        a13 = [empty]  # a13 description (type: file)
         a14 = build/a14 # a14 description (type: file)
-        a15 = build/a15 # (source: computed value) a15 description (type: file)
+        a15 = build/a15 # a15 description (type: file, source: computed value)
         """)
         result.task(":buildOptions").outcome == TaskOutcome.SUCCESS
     }
@@ -118,9 +120,9 @@ class BuildOptionsPluginSpec extends AbstractIntegTest {
         
         tasks.matching { it.name == "buildOptions" }.configureEach {
           optionGroups {
-            group("Options a01 and a03:", "(a0[1|3].*)")
-            group("Options a04:", "(a04)")
-            allOtherOptions("Other options:")
+            group("Options a01 and a03", "(a0[1|3].*)")
+            group("Options a04", "(a04)")
+            otherOptions("Other options")
           }
         }
         """)
@@ -132,14 +134,17 @@ class BuildOptionsPluginSpec extends AbstractIntegTest {
 
         then:
         containsLines(result.output, """
-        Options a01 and a03:
+        Options a01 and a03
+        ===================
         a01 = [empty]  # a01 description
         a03 = [empty]  # a03 description
        
-        Options a04:
+        Options a04
+        ===========
         a04 = [empty]  # a04 description
         
-        Other options:
+        Other options
+        =============
         a02 = [empty]  # a02 description
         """)
         result.task(":buildOptions").outcome == TaskOutcome.SUCCESS
@@ -181,5 +186,71 @@ class BuildOptionsPluginSpec extends AbstractIntegTest {
           a04: --
         """)
         result.task(":printOptions").outcome == TaskOutcome.SUCCESS
+    }
+
+    def "allOptions task should display all options from all subprojects"() {
+        given:
+        settingsFile("""
+        include("subproject-1")
+        include("subproject-2")
+        """)
+        buildFile(
+                """
+        plugins {
+          id('com.carrotsearch.gradle.opts')
+        }
+
+        subprojects {
+          apply plugin: 'com.carrotsearch.gradle.opts'
+          buildOptions {
+            addOption("a03", "a03 description")
+          }
+        }
+        
+        configure(project("subproject-2")) {
+          buildOptions {
+            addOption("a04", "a04 description")
+          }
+        }
+
+        buildOptions {
+            addOption("a01", "a01 description")
+            addOption("a02", "a02 description")
+        }
+   
+        allprojects {     
+            tasks.withType(com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsTask).configureEach {
+              optionGroups {
+                group("Options a01 and a03", "(a0[1|3].*)")
+                group("Options a04", "(a04)")
+                otherOptions("Other options")
+              }
+            }
+        }
+        """)
+
+        when:
+        def result = gradleRunner()
+                .withArguments(":allOptions")
+                .build()
+
+        then:
+        println result.tasks
+        containsLines(result.output, """
+Configurable build options in 3 projects:
+ 
+Options a01 and a03
+===================
+a01 = [empty]  # a01 description (in ':')
+a03 = [empty]  # a03 description (in 2 projects)
+ 
+Options a04
+===========
+a04 = [empty]  # a04 description (in ':subproject-2')
+ 
+Other options
+=============
+a02 = [empty]  # a02 description (in ':')
+        """)
     }
 }

@@ -22,7 +22,6 @@ abstract class AbstractIntegTest extends Specification {
     settingsFile("rootProject.name = 'test'")
 
     buildFile = new File(testProjectDir, 'build.gradle')
-    lockFile = new File(testProjectDir, 'versions.lock')
   }
 
   void settingsFile(String text) {
@@ -31,10 +30,6 @@ abstract class AbstractIntegTest extends Specification {
 
   void buildFile(String text) {
     buildFile.setText(text.stripLeading(), "UTF-8")
-  }
-
-  void lockFile(String text) {
-    lockFile.setText(text.stripLeading(), "UTF-8")
   }
 
   GradleRunner gradleRunner() {

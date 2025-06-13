@@ -1,16 +1,19 @@
 package com.carrotsearch.gradle.buildinfra.buildoptions;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
+import java.util.Set;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import org.gradle.api.Action;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.internal.logging.text.StyledTextOutput;
@@ -28,41 +31,28 @@ public abstract class BuildOptionsTask extends DefaultTask {
   static final Style computed = Style.Identifier;
   static final Style overridden = Style.FailureHeader;
   static final Style comment = Style.ProgressStatus;
+  static final Style extras = Style.SuccessHeader;
+  static final Style optionGroupHeader = Style.Header;
 
   @Inject
   protected abstract StyledTextOutputFactory getOutputFactory();
 
   @Input
-  public NamedDomainObjectContainer<BuildOption> getAllBuildOptions() {
-    var optsExtension = getProject().getExtensions().getByType(BuildOptionsExtension.class);
-    return optsExtension.getAllOptions();
-  }
+  public abstract SetProperty<BuildOption> getAllBuildOptions();
 
   @Inject
   public BuildOptionsTask(Project project) {
     setDescription("Shows configurable options");
     setGroup(BUILD_OPTIONS_TASK_GROUP);
+    getAllBuildOptions()
+        .convention(
+            getProject().getExtensions().getByType(BuildOptionsExtension.class).getAllOptions());
     this.projectName =
         (project == project.getRootProject() ? ": (the root project)" : project.getPath());
   }
 
   /** Option grouping spec. */
   private final OptionGroupingSpec groupingSpec = new OptionGroupingSpec();
-
-  private static record OptionGroup(Pattern matcher, String description) {}
-
-  public final class OptionGroupingSpec {
-    private List<OptionGroup> optionGroups = new ArrayList<>();
-    private String ungroupedDescription = "Other options:";
-
-    public void group(String description, String regexp) {
-      optionGroups.add(new OptionGroup(Pattern.compile(regexp), description));
-    }
-
-    public void allOtherOptions(String description) {
-      this.ungroupedDescription = description;
-    }
-  }
 
   /** Configures option grouping. */
   public void optionGroups(Action<OptionGroupingSpec> action) {
@@ -73,45 +63,51 @@ public abstract class BuildOptionsTask extends DefaultTask {
   public void exec() {
     var out = getOutputFactory().create(this.getClass());
 
+    Set<BuildOption> allBuildOptions = getAllBuildOptions().get();
+
+    int sourceProjectCount =
+        allBuildOptions.stream()
+            .map(BuildOption::getProjectPath)
+            .collect(Collectors.toSet())
+            .size();
+
     out.append("Configurable build options in ")
         .withStyle(Style.Identifier)
-        .append(projectName)
+        .append(sourceProjectCount <= 1 ? projectName : sourceProjectCount + " projects:")
         .append("\n\n");
 
     final int keyWidth =
-        getAllBuildOptions().stream().mapToInt(opt -> opt.getName().length()).max().orElse(1);
+        allBuildOptions.stream().mapToInt(opt -> opt.getName().length()).max().orElse(1);
     final String keyFmt = "%-" + keyWidth + "s = ";
 
-    var sortedOptions =
-        getAllBuildOptions().stream().sorted(Comparator.comparing(BuildOption::getName)).toList();
+    List<BuildOption> sortedOptions =
+        allBuildOptions.stream().sorted(Comparator.comparing(BuildOption::getName)).toList();
 
-    if (groupingSpec.optionGroups.isEmpty()) {
-      sortedOptions.forEach(opt -> printOptionInfo(opt, out, keyFmt));
+    boolean includeSourceProjectRef = sourceProjectCount > 1;
+
+    if (groupingSpec.getOptionGroups().isEmpty()) {
+      printOptionList(sortedOptions, out, keyFmt, includeSourceProjectRef);
     } else {
       var ungrouped = new LinkedHashSet<>(sortedOptions);
-      for (OptionGroup group : groupingSpec.optionGroups) {
+      for (OptionGroup group : groupingSpec.getOptionGroups()) {
         var matchingOptions =
             sortedOptions.stream()
-                .filter(opt -> group.matcher.matcher(opt.getName()).matches())
+                .filter(opt -> group.matcher().matcher(opt.getName()).matches())
                 .toList();
 
         if (matchingOptions.isEmpty()) {
           continue;
         }
 
-        printOptionGroupHeader(out, group.description);
-        for (var opt : matchingOptions) {
-          printOptionInfo(opt, out, keyFmt);
-          ungrouped.remove(opt);
-        }
+        printOptionGroupHeader(out, group.description());
+        printOptionList(matchingOptions, out, keyFmt, includeSourceProjectRef);
+        ungrouped.removeIf(matchingOptions::contains);
         out.println();
       }
 
-      if (!ungrouped.isEmpty() && groupingSpec.ungroupedDescription != null) {
-        printOptionGroupHeader(out, groupingSpec.ungroupedDescription);
-        for (var opt : ungrouped) {
-          printOptionInfo(opt, out, keyFmt);
-        }
+      if (!ungrouped.isEmpty() && groupingSpec.getOtherOptions() != null) {
+        printOptionGroupHeader(out, groupingSpec.getOtherOptions());
+        printOptionList(ungrouped, out, keyFmt, includeSourceProjectRef);
       }
     }
 
@@ -119,7 +115,38 @@ public abstract class BuildOptionsTask extends DefaultTask {
     printLegend(out);
   }
 
-  private static void printOptionInfo(BuildOption opt, StyledTextOutput out, String keyFmt) {
+  record OptionKey(String name, BuildOptionType type, String value, String description) {}
+
+  private void printOptionList(
+      Collection<BuildOption> sortedOptions,
+      StyledTextOutput out,
+      String keyFmt,
+      boolean includeProjectRef) {
+    var grouped =
+        sortedOptions.stream()
+            .collect(
+                Collectors.groupingBy(
+                    (BuildOption option) -> {
+                      return new OptionKey(
+                          option.getName(),
+                          option.getType(),
+                          option.asStringProvider().getOrElse(""),
+                          option.getDescription());
+                    },
+                    LinkedHashMap::new,
+                    Collectors.toList()));
+
+    for (var entry : grouped.entrySet()) {
+      printOptionInfo(entry.getValue().getFirst(), out, keyFmt, includeProjectRef, entry.getValue().size());
+    }
+  }
+
+  private static void printOptionInfo(
+      BuildOption opt,
+      StyledTextOutput out,
+      String keyFmt,
+      boolean includeProjectRef,
+      int projectRefs) {
     var value = opt.getValue();
 
     String valueSource = null;
@@ -149,24 +176,35 @@ public abstract class BuildOptionsTask extends DefaultTask {
 
     out.format(keyFmt, opt.getName());
     out.withStyle(valueStyle).format("%-8s", value.isPresent() ? value.get() : "[empty]");
-    out.withStyle(comment).append(" # ");
-    if (valueSource != null) {
-      out.withStyle(valueStyle).append("(source: ").append(valueSource).append(") ");
-    }
-    out.withStyle(comment).append(opt.getDescription());
+    out.withStyle(comment).append(" # ").append(opt.getDescription());
+
+    List<String> extraInfo = new ArrayList<>();
     if (opt.getType() != BuildOptionType.STRING) {
-      out.append(" (type: ").append(opt.getType().toString().toLowerCase(Locale.ROOT)).append(")");
+      extraInfo.add("type: " + opt.getType().toString().toLowerCase(Locale.ROOT));
+    }
+    if (valueSource != null) {
+      extraInfo.add("source: " + valueSource);
+    }
+    if (includeProjectRef) {
+      if (projectRefs > 1) {
+        extraInfo.add("in " + projectRefs + " projects");
+      } else {
+        extraInfo.add("in '" + opt.getProjectPath() + "'");
+      }
+    }
+    if (!extraInfo.isEmpty()) {
+      out.withStyle(extras).append(" (").append(String.join(", ", extraInfo)).append(")");
     }
     out.append("\n");
   }
 
   private void printOptionGroupHeader(StyledTextOutput out, String description) {
-    out.withStyle(normal).append(description);
+    out.withStyle(optionGroupHeader).append(description).append("\n").append("=".repeat(description.length()));
     out.println();
   }
 
   private static void printLegend(StyledTextOutput out) {
-    out.append("Option value colors legend: ");
+    out.append("Option values color coded: ");
     out.withStyle(normal).append("default value");
     out.append(", ");
     out.withStyle(computed).append("computed value");

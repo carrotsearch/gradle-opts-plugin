@@ -35,6 +35,10 @@ public abstract class BuildOption implements Named {
     this.project = project;
   }
 
+  public String getProjectPath() {
+    return project.getPath();
+  }
+
   public Provider<Boolean> asBooleanProvider() {
     ensureType(
         BuildOptionType.BOOLEAN, EnumSet.of(BuildOptionType.BOOLEAN, BuildOptionType.STRING));
@@ -136,7 +140,7 @@ public abstract class BuildOption implements Named {
     return projectPath.relativize(valuePath).toString();
   }
 
-  public String relativePath(RegularFile value) {
+  String relativePath(RegularFile value) {
     var projectPath = project.getLayout().getProjectDirectory().getAsFile().toPath();
     var valuePath = value.getAsFile().toPath();
     return projectPath.relativize(valuePath).toString();

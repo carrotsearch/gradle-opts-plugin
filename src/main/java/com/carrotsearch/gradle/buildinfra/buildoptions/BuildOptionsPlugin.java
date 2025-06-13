@@ -26,6 +26,7 @@ public class BuildOptionsPlugin implements Plugin<Project> {
   public static final String BUILD_OPTIONS_FILE = "build-options.properties";
   public static final String LOCAL_BUILD_OPTIONS_FILE = "build-options.local.properties";
   public static final String OPTIONS_EXTENSION_NAME = "buildOptions";
+  private static final String ALL_BUILD_OPTIONS_TASK_NAME = "allOptions";
 
   public abstract static class OptionFileValueSource
       implements ValueSource<String, OptionFileValueSource.Parameters>, Describable {
@@ -117,16 +118,28 @@ public class BuildOptionsPlugin implements Plugin<Project> {
                           .orElse(option.getDefaultValue()));
             });
 
-    // Add buildOptions and aliases.
+    // Add tasks.
     var buildOptionsTask =
         project.getTasks().register(BuildOptionsTask.NAME, BuildOptionsTask.class);
-    project
-        .getTasks()
-        .register(
-            "showOptions",
-            t -> {
-              t.dependsOn(buildOptionsTask);
-            });
+
+    // register an overview of all options for the root project.
+    if (project == project.getRootProject()) {
+      project
+          .getTasks()
+          .register(
+              ALL_BUILD_OPTIONS_TASK_NAME,
+              BuildOptionsTask.class,
+              task -> {
+                project
+                    .getAllprojects()
+                    .forEach(
+                        p -> {
+                          task.getAllBuildOptions()
+                              .addAll(
+                                      p.getExtensions().getByType(BuildOptionsExtension.class).getAllOptions());
+                        });
+              });
+    }
   }
 
   private static @NotNull Provider<BuildOptionValue> fromLocalFile(
