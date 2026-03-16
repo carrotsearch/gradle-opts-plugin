@@ -12,7 +12,8 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 
 public abstract class BuildOption implements Named {
-  private final Project project;
+  private final Directory projectDirectory;
+  private final String projectPath;
 
   public abstract BuildOptionType getType();
 
@@ -32,11 +33,12 @@ public abstract class BuildOption implements Named {
 
   @Inject
   public BuildOption(Project project) {
-    this.project = project;
+    this.projectDirectory = project.getLayout().getProjectDirectory();
+    this.projectPath = project.getPath();
   }
 
   public String getProjectPath() {
-    return project.getPath();
+    return projectPath;
   }
 
   public Provider<Boolean> asBooleanProvider() {
@@ -87,7 +89,7 @@ public abstract class BuildOption implements Named {
     return asStringProvider()
         .map(
             value -> {
-              return project.getLayout().getProjectDirectory().dir(value);
+              return projectDirectory.dir(value);
             });
   }
 
@@ -96,7 +98,7 @@ public abstract class BuildOption implements Named {
     return asStringProvider()
         .map(
             value -> {
-              return project.getLayout().getProjectDirectory().file(value);
+              return projectDirectory.file(value);
             });
   }
 
@@ -135,13 +137,13 @@ public abstract class BuildOption implements Named {
   }
 
   String relativePath(Directory value) {
-    var projectPath = project.getLayout().getProjectDirectory().getAsFile().toPath();
+    var projectPath = projectDirectory.getAsFile().toPath();
     var valuePath = value.getAsFile().toPath();
     return projectPath.relativize(valuePath).toString();
   }
 
   String relativePath(RegularFile value) {
-    var projectPath = project.getLayout().getProjectDirectory().getAsFile().toPath();
+    var projectPath = projectDirectory.getAsFile().toPath();
     var valuePath = value.getAsFile().toPath();
     return projectPath.relativize(valuePath).toString();
   }

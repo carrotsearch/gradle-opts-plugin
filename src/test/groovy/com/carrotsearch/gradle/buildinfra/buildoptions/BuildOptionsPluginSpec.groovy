@@ -2,6 +2,8 @@ package com.carrotsearch.gradle.buildinfra.buildoptions
 
 import org.gradle.testkit.runner.TaskOutcome
 
+import java.nio.file.Files
+
 class BuildOptionsPluginSpec extends AbstractIntegTest {
     def "provides buildOptions extension and configures basic options"() {
         given:
@@ -190,10 +192,14 @@ class BuildOptionsPluginSpec extends AbstractIntegTest {
 
     def "allOptions task should display all options from all subprojects"() {
         given:
+        Files.createDirectories(testProjectDir.toPath().resolve("subproject-2"))
+        Files.createDirectories(testProjectDir.toPath().resolve("subproject-1"))
+
         settingsFile("""
         include("subproject-1")
         include("subproject-2")
         """)
+
         buildFile(
                 """
         plugins {
@@ -231,7 +237,7 @@ class BuildOptionsPluginSpec extends AbstractIntegTest {
 
         when:
         def result = gradleRunner()
-                .withArguments(":allOptions")
+                .withArguments(":allOptions", "--warning-mode", "all", "--configuration-cache", "--stacktrace")
                 .build()
 
         then:
