@@ -74,20 +74,6 @@ tasks.withType(Test).configureEach {
     systemProperty("tests.gradle.version", gradle.gradleVersion)
 }
 
-tasks.matching { it.name == "publishAllPublicationsToSonatypeRepository" }.configureEach {
-    doFirst {
-        if (gradle.startParameter.maxWorkerCount != 1) {
-            throw new GradleException("Use '--max-workers 1' to prevent multiple uploads.")
-        }
-    }
-}
-
-tasks.register("publishToSonatype", {
-    description = "Publish plugin to Sonatype"
-    group = "Publishing"
-    dependsOn "publishAllPublicationsToSonatypeRepository"
-})
-
 publishing {
     repositories {
         maven {
@@ -111,7 +97,7 @@ publishing {
     }
 
     publications {
-        withType(MavenPublication) {
+        withType(MavenPublication).configureEach {
             pom {
                 inceptionYear = "2025"
 
