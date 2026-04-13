@@ -1,5 +1,6 @@
 package com.carrotsearch.gradle.buildinfra.buildoptions
 
+import org.assertj.core.api.Assertions
 import org.gradle.testkit.runner.TaskOutcome
 
 import java.nio.file.Files
@@ -43,10 +44,45 @@ class BuildOptionsPluginSpec extends AbstractIntegTest {
         result.task(":printOptions").outcome == TaskOutcome.SUCCESS
     }
 
+    def "buildOptions with default provider values should be frozen after first read"() {
+        given:
+        buildFile(
+                """
+        import java.util.concurrent.atomic.AtomicInteger;
+
+        plugins {
+          id('com.carrotsearch.gradle.opts')
+        }
+
+        AtomicInteger cntr = new AtomicInteger();
+        Provider<String> stringOption = buildOptions.addOption("stringOption", "", project.providers.provider { "" + cntr.incrementAndGet() })
+        logger.lifecycle("stringOption: " + stringOption.get() + " " + stringOption.get())
+
+        tasks.register("printOptions", {
+          doLast {
+            logger.lifecycle("stringOption: " + buildOptions['stringOption'].get())
+          }
+        })
+        """)
+
+        when:
+        def result = gradleRunner()
+                .withArguments("printOptions")
+                .run()
+
+        then:
+        Assertions.assertThat(normalizeLines(result.output).split("\n"))
+                .contains(
+                        "stringOption: 1",
+                        "stringOption: 1 1",
+                );
+        result.task(":printOptions").outcome == TaskOutcome.SUCCESS
+    }
+
     def "provides buildOptions task that shows all options, their sources and values"() {
         given:
         buildFile(
-        """
+                """
         plugins {
           id('com.carrotsearch.gradle.opts')
         }

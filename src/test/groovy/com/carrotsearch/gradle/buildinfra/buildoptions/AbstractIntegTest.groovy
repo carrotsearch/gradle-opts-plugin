@@ -42,13 +42,13 @@ abstract class AbstractIntegTest extends Specification {
   }
 
   void containsLines(String result, String substring) {
-    if (!normalizeLines(result).contains( normalizeLines(substring.trim()))) {
+    if (!normalizeLines(result).contains(normalizeLines(substring.trim()))) {
       Assertions.fail(String.format(Locale.ROOT,
           "Expecting:%n%n%s%n%nin the following:%n%n%s", substring, result))
     }
   }
 
-  private static String normalizeLines(String input) {
-    return input.split().collect { line -> line.trim() }.join("\n")
+  static String normalizeLines(String input) {
+    return input.split("\n").collect { line -> line.trim() }.join("\n")
   }
 }

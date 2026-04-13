@@ -36,6 +36,7 @@ public abstract class BuildOptionsExtension {
         .create(
             name,
             opt -> {
+              opt.getDefaultValue().finalizeValueOnRead();
               opt.setDescription(description);
               opt.setType(BuildOptionType.STRING);
               spec.execute(opt);
@@ -79,6 +80,7 @@ public abstract class BuildOptionsExtension {
         .create(
             name,
             opt -> {
+              opt.getDefaultValue().finalizeValueOnRead();
               opt.setDescription(description);
               opt.setType(BuildOptionType.BOOLEAN);
               spec.execute(opt);
@@ -126,6 +128,7 @@ public abstract class BuildOptionsExtension {
         .create(
             name,
             opt -> {
+              opt.getDefaultValue().finalizeValueOnRead();
               opt.setDescription(description);
               opt.setType(BuildOptionType.INTEGER);
               spec.execute(opt);
@@ -173,6 +176,7 @@ public abstract class BuildOptionsExtension {
         .create(
             name,
             opt -> {
+              opt.getDefaultValue().finalizeValueOnRead();
               opt.setDescription(description);
               opt.setType(BuildOptionType.DIRECTORY);
               spec.execute(opt);
@@ -220,6 +224,7 @@ public abstract class BuildOptionsExtension {
         .create(
             name,
             opt -> {
+              opt.getDefaultValue().finalizeValueOnRead();
               opt.setDescription(description);
               opt.setType(BuildOptionType.FILE);
               spec.execute(opt);
