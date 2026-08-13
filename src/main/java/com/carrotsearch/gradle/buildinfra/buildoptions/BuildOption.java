@@ -28,7 +28,21 @@ public abstract class BuildOption implements Named {
   abstract Property<BuildOptionValue> getDefaultValue();
 
   public final Provider<String> asStringProvider() {
-    return getValue().map(BuildOptionValue::value);
+    // A boolean option passed without a value (-Poption.name, -Doption.name) means true. This
+    // normalization must not happen inside the value property's own convention chain: lambdas
+    // there would have to capture this option, creating a circular reference that the
+    // configuration cache cannot restore.
+    return getValue()
+        .map(
+            v -> {
+              if (getType() == BuildOptionType.BOOLEAN
+                  && v.value().isEmpty()
+                  && (v.source() == BuildOptionValueSource.SYSTEM_PROPERTY
+                      || v.source() == BuildOptionValueSource.GRADLE_PROPERTY)) {
+                return Boolean.TRUE.toString();
+              }
+              return v.value();
+            });
   }
 
   @Inject

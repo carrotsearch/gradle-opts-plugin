@@ -66,34 +66,25 @@ public class BuildOptionsPlugin implements Plugin<Project> {
             option -> {
               var providers = project.getProviders();
               var optionName = option.getName();
+              // These lambdas must not capture 'option': the value chain is reachable from the
+              // option's own value property, and the configuration cache cannot restore such
+              // circular references through lambda captures. Empty-value normalization for
+              // boolean options happens in BuildOption#asBooleanProvider instead.
               option
                   .getValue()
                   .convention(
                       providers
                           .systemProperty(optionName)
                           .map(
-                              v -> {
-                                if (option.getType() == BuildOptionType.BOOLEAN) {
-                                  if (v.isEmpty()) {
-                                    v = Boolean.TRUE.toString();
-                                  }
-                                }
-                                return new BuildOptionValue(
-                                    v, BuildOptionValueSource.SYSTEM_PROPERTY);
-                              })
+                              v ->
+                                  new BuildOptionValue(v, BuildOptionValueSource.SYSTEM_PROPERTY))
                           .orElse(
                               providers
                                   .gradleProperty(optionName)
                                   .map(
-                                      v -> {
-                                        if (option.getType() == BuildOptionType.BOOLEAN) {
-                                          if (v.isEmpty()) {
-                                            v = Boolean.TRUE.toString();
-                                          }
-                                        }
-                                        return new BuildOptionValue(
-                                            v, BuildOptionValueSource.GRADLE_PROPERTY);
-                                      }))
+                                      v ->
+                                          new BuildOptionValue(
+                                              v, BuildOptionValueSource.GRADLE_PROPERTY)))
                           .orElse(
                               providers
                                   .environmentVariable(optionName)
